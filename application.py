@@ -3,9 +3,9 @@ from flask_restful import Resource, Api, reqparse
 from flask_cors import CORS
 import os, cv2
 import werkzeug, uuid, shutil
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.layers import Input
+# import numpy as np
+# import tensorflow as tf
+# from tensorflow.keras.layers import Input
 
 application = Flask(__name__)
 api = Api(application)
@@ -63,6 +63,7 @@ def load_and_resize_image(filepath, width=None, height=None):
 # 동영상에서 프레임 단위로 Shot 내려서 저장하는 함수
 def extract_frames(video_path, output_dir, interval=0.6, enhance=False):
     try:
+        '''
         def load_srcnn_model():
             input_shape = (None, None, 1)
             inputs = Input(shape=input_shape)
@@ -84,6 +85,7 @@ def extract_frames(video_path, output_dir, interval=0.6, enhance=False):
             enhanced_image = cv2.merge([y_enhanced, cr, cb])
             enhanced_image = cv2.cvtColor(enhanced_image, cv2.COLOR_YCrCb2BGR)
             return enhanced_image
+        '''
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -93,7 +95,7 @@ def extract_frames(video_path, output_dir, interval=0.6, enhance=False):
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_interval = int(fps * interval)
         create_directory(output_dir)
-        srcnn_model = load_srcnn_model() if enhance else None
+        # srcnn_model = load_srcnn_model() if enhance else None
         frame_count = 0
         extracted_count = 0
         
@@ -102,8 +104,8 @@ def extract_frames(video_path, output_dir, interval=0.6, enhance=False):
             if not ret:
                 break
             if frame_count % frame_interval == 0:
-                if enhance and srcnn_model:
-                    frame = enhance_image(frame, srcnn_model)
+                # if enhance and srcnn_model:
+                #     frame = enhance_image(frame, srcnn_model)
                 frame_filename = os.path.join(output_dir, f"frame_{extracted_count:04d}.jpg")
                 cv2.imwrite(frame_filename, frame)
                 extracted_count += 1
@@ -191,4 +193,4 @@ api.add_resource(Index, '/')
 api.add_resource(Convert, '/convert')
 
 if __name__ == '__main__':
-    application.run(debug=True)
+    application.run(debug=True, host='0.0.0.0', port=5050)
