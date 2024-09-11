@@ -3,7 +3,7 @@
 ## Project Overview
 This project provides an API that extracts frames from a video, enhances the images using SRCNN (Super-Resolution Convolutional Neural Network), and stitches them into a panoramic image. It is implemented in three versions: Django, Flask, and FastAPI.
 
-## 주요 기능
+## Key Features
 - Video frame extraction
 - Image enhancement using SRCNN (3-layer and 4-layer models)
 - Panoramic image stitching
@@ -32,7 +32,7 @@ This project provides an API that extracts frames from a video, enhances the ima
    - 3-layer model: `MODEL_PATH`
    - 4-layer model: `MODEL_4LAYER_PATH`
 
-## 사용 방법
+## Usage
 ### Django
 1. Start the server: `python manage.py runserver`
 2. API Endpoints:
