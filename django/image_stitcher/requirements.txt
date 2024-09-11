@@ -1,0 +1,5 @@
+Django
+django-cors-headers
+opencv-python
+numpy
+torch

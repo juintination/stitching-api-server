@@ -1,8 +1,8 @@
 # filename: app.py
 # author: Bochan Kang (WellshCorgi)
-# date: 2024-08-12
-# version: 2.0
-# description : Changed Working SRCNN by Tensor to Pytorch
+# date: 2024-08-31
+# version: 2.1
+# description : Added a four-layer SRCNN model
 
 import os
 import cv2
@@ -33,6 +33,7 @@ PROCESSING_FOLDER = 'processing'
 TARGET_SIZE = 1000
 PORT = 5050
 MODEL_PATH = './model/srcnn_x2.pth.tar'
+MODEL_4LAYER_PATH = './model/srcnn_x2_4.tar'
 
 # GPU 사용 가능 여부 확인 및 device 설정, GPU 사용 여부 표시
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -143,6 +144,55 @@ class SRCNN(nn.Module):
 
         nn.init.normal_(self.reconstruction.weight.data, 0.0, 0.001)
         nn.init.zeros_(self.reconstruction.bias.data)
+
+#4layer 기반 SRCNN 모델 정의
+class SRCNN_4Layer(nn.Module):
+    def __init__(self) -> None:
+        super(SRCNN, self).__init__()
+        # Feature extraction layer.
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 64, (9, 9), (1, 1), (4, 4)),
+            nn.ReLU(True)
+        )
+
+        # Non-linear mapping layer.
+        self.map = nn.Sequential(
+            nn.Conv2d(64, 32, (5, 5), (1, 1), (2, 2)),
+            nn.ReLU(True),
+            # 새로운 레이어 추가
+            nn.Conv2d(32, 32, (3, 3), (1, 1), (1, 1)),
+            nn.ReLU(True)
+        )
+
+        # Rebuild the layer.
+        self.reconstruction = nn.Conv2d(32, 1, (5, 5), (1, 1), (2, 2))
+
+        # Initialize model weights.
+        self._initialize_weights()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self._forward_impl(x)
+
+    # Support torch.script function.
+    def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
+        out = self.features(x)
+        out = self.map(out)
+        out = self.reconstruction(out)
+
+        return out
+
+    # The filter weight of each layer is a Gaussian distribution with zero mean and
+    # standard deviation initialized by random extraction 0.001 (deviation is 0)
+    def _initialize_weights(self) -> None:
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.normal_(module.weight.data, 0.0, math.sqrt(2 / (module.out_channels * module.weight.data[0][0].numel())))
+                nn.init.zeros_(module.bias.data)
+
+        nn.init.normal_(self.reconstruction.weight.data, 0.0, 0.001)
+        nn.init.zeros_(self.reconstruction.bias.data)
+
+
 
 # 이미지 향상 함수 (PyTorch SRCNN 사용)
 # SRCNN 특성상 이미지 향상 시킨후 필터 투입
