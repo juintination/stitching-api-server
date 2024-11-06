@@ -39,14 +39,17 @@ This FastAPI application provides an API for extracting frames from videos, enha
 
 1. Start the server:
    ```
+   # Use OpenCV lib
    python main.py
+
+   # Use Stitching lib
+   python st_main.py
    ```
    The server will start on `http://0.0.0.0:5050`.
 
 2. API Endpoints:
    - `GET /`: Root endpoint to check if the API is working
    - `POST /convert`: Upload a video for frame extraction, enhancement, and stitching
-   - `POST /upload`: Upload an image for training data
 
 3. To use the `/convert` endpoint:
    - Send a POST request with a video file in the body
