@@ -1,8 +1,8 @@
 # filename: main.py
 # author: Bochan Kang
-# date: 2024-09-01
+# date: 2024-11-06
 # version: 1.0
-# description: FastAPI version of the image stitching application
+# description: Enhance FastAPI version
 
 import os
 import cv2
@@ -38,7 +38,7 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv('ALLOWED_ORIGIN', '*')],
+    allow_origins=['ALLOWED_ORIGIN', '*'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -299,6 +299,10 @@ async def convert(file: UploadFile = File(...)):
     Raises:
         HTTPException: 처리 중 오류가 발생한 경우
     """
+    # Log headers and file info
+    logger.info(f"[Request] Headers: {file.headers}")
+    logger.info(f"[Request] File name: {file.filename}, Content-Type: {file.content_type}, File size: {file.file.tell()}")
+
     unique_id = str(uuid.uuid4())
     processing_dir = os.path.join(PROCESSING_FOLDER, unique_id)
     frames_dir = os.path.join(processing_dir, 'frames')
@@ -327,8 +331,9 @@ async def convert(file: UploadFile = File(...)):
         if len(images) > 0:
             logger.info('[Stitcher] Starting image stitching')
             stitch_images(images, result_path)
+            response = FileResponse(result_path, media_type='image/jpeg', filename='result_img.jpg')
             clean_up(processing_dir)
-            return FileResponse(result_path)
+            return response
         else:
             clean_up(processing_dir)
             raise HTTPException(status_code=400, detail="No images to stitch")
@@ -336,30 +341,6 @@ async def convert(file: UploadFile = File(...)):
     except Exception as e:
         clean_up(processing_dir)
         logger.error(f"[Stitcher] Error during processing: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/upload", summary="Upload image for train data", description="사용자가 제공한 이미지를 업로드합니다.")
-async def upload_image(file: UploadFile = File(...)):
-    """
-    사용자가 제공한 이미지 파일을 업로드합니다.
-    
-    Args:
-        file (UploadFile): 업로드할 이미지 파일
-
-    Returns:
-        dict: 업로드 결과 및 파일 경로를 포함하는 딕셔너리
-
-    Raises:
-        HTTPException: 파일 업로드 중 오류가 발생한 경우
-    """
-    try:
-        create_directory(UPLOAD_USER_DONATE)
-        file_path = os.path.join(UPLOAD_USER_DONATE, file.filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        return {"result": "success", "message": "File uploaded successfully", "file_path": file_path}
-    except Exception as e:
-        logger.error(f"[UploadImage] Error during file upload: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
