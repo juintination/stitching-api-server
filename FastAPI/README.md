@@ -45,7 +45,7 @@ This FastAPI application provides an API for extracting frames from videos, enha
    # Use Stitching lib
    python st_main.py
    ```
-   The server will start on `http://0.0.0.0:5050`.
+   The server will start on `http://0.0.0.0:4050`.
 
 2. API Endpoints:
    - `GET /`: Root endpoint to check if the API is working
