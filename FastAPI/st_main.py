@@ -1,8 +1,8 @@
 # filename: main.py
 # author: Bochan Kang
-# date: 2024-11-06
+# date: 2024-09-01
 # version: 1.0
-# description: Enhance FastAPI version
+# description: FastAPI version of the image stitching application
 
 import os
 import cv2
@@ -10,6 +10,8 @@ import uuid
 import shutil
 import numpy as np
 import torch
+import time
+from stitching import Stitcher
 from torch import nn
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
@@ -38,7 +40,7 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['ALLOWED_ORIGIN', '*'],
+    allow_origins=[os.getenv('ALLOWED_ORIGIN', '*')],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -85,14 +87,11 @@ def resize_image(img, target_size=1000):
 def stitch_images(images, output_path):
     try:
         cv2.ocl.setUseOpenCL(False)  # OpenCL 비활성화
-        stitcher = cv2.Stitcher_create(cv2.Stitcher_PANORAMA)
-        status, stitched_img = stitcher.stitch(images)
-        if status == cv2.Stitcher_OK:
-            logger.info("[Stitcher] Image stitching successful!")
-            cv2.imwrite(output_path, stitched_img)
-        else:
-            logger.error(f"[Stitcher] Image stitching failed: {status}")
-            handle_stitching_error(status)
+        stitcher = Stitcher(detector="sift", confidence_threshold=0.8, try_use_gpu=True, crop=False)
+        stitched_img = stitcher.stitch(images)
+        # 스티칭 수행
+        logger.info("[Stitcher] Image stitching successful!")
+        cv2.imwrite(output_path, stitched_img)
     except cv2.error as e:
         error_msg = str(e)
         if "DLASCLS" in error_msg or "illegal value" in error_msg:
@@ -228,7 +227,7 @@ def load_and_preprocess_image(filepath, target_size=1000):
         return None
 
 # Frame extraction and saving function
-def extract_frames(video_path, output_dir, interval=1, enhance=False):
+def extract_frames(video_path, output_dir, interval=0.7, enhance=True):
     try:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -299,10 +298,6 @@ async def convert(file: UploadFile = File(...)):
     Raises:
         HTTPException: 처리 중 오류가 발생한 경우
     """
-    # Log headers and file info
-    logger.info(f"[Request] Headers: {file.headers}")
-    logger.info(f"[Request] File name: {file.filename}, Content-Type: {file.content_type}, File size: {file.file.tell()}")
-
     unique_id = str(uuid.uuid4())
     processing_dir = os.path.join(PROCESSING_FOLDER, unique_id)
     frames_dir = os.path.join(processing_dir, 'frames')
@@ -330,7 +325,11 @@ async def convert(file: UploadFile = File(...)):
         result_path = os.path.join(result_dir, 'result_img.jpg')
         if len(images) > 0:
             logger.info('[Stitcher] Starting image stitching')
+            start_time = time.time()
             stitch_images(images, result_path)
+            end_time = time.time()
+            execution_time = end_time - start_time
+            logger.info(f"[Stitcher] Execution Time: {execution_time}")
             response = FileResponse(result_path, media_type='image/jpeg', filename='result_img.jpg')
             clean_up(processing_dir)
             return response
@@ -343,6 +342,7 @@ async def convert(file: UploadFile = File(...)):
         logger.error(f"[Stitcher] Error during processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5050)
+    uvicorn.run(app, host="0.0.0.0", port=4050)
